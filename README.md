@@ -1,6 +1,6 @@
 # SEGlobal 360 — Landing page
 
-Sitio de una sola página para **www.seglobal360.com**. Está hecho con Next.js 16 (App Router), Tailwind CSS 4 y TypeScript. Todo se genera como contenido estático, sin backend.
+Sitio web de **www.seglobal360.com**. Está hecho con Next.js 16 (App Router), Tailwind CSS 4 y TypeScript. Casi todo se genera como contenido estático. La única parte dinámica es el rastreo de envíos (`/rastreo`), que lee el estado de cada guía desde una hoja de Google Sheets.
 
 > Este proyecto usa **solo pnpm**. No uses `npm` ni `npx`. Si necesitas ejecutar un paquete, usa `pnpm dlx`.
 
@@ -16,10 +16,17 @@ pnpm install      # instala dependencias
 pnpm dev          # servidor de desarrollo en http://localhost:3000 (Ctrl+C para detenerlo)
 ```
 
+Para que funcione el rastreo, crea un archivo `.env.local` en la raíz (no se sube a git):
+
+```bash
+TRACKING_SHEET_ID=1HSTkvPLzBoDItAdaTC5bEH_MdaB7RH61bLY2yFpfUwA   # ID de la hoja, el que aparece en su URL
+TRACKING_SHEET_GID=0                                               # opcional: pestaña de la hoja (gid en la URL)
+```
+
 Para probar la versión de producción:
 
 ```bash
-pnpm build        # compila; la ruta / debe aparecer como estática (○)
+pnpm build        # compila; / debe salir estática (○) y /rastreo como prerender parcial (◐)
 pnpm start        # sirve el build en http://localhost:3000 (Ctrl+C para detenerlo)
 pnpm lint         # revisión con ESLint
 ```
@@ -31,10 +38,20 @@ pnpm lint         # revisión con ESLint
 | WhatsApp, mensaje prellenado, Instagram y LinkedIn | `lib/site.ts` |
 | Servicios, soluciones logísticas, países y categorías | `lib/content.ts` |
 | Menú de navegación | `navLinks` en `lib/site.ts` |
+| Pasos del rastreo (nombres, textos e íconos) | `lib/tracking-steps.ts` |
 | Imagen principal (hero) | `public/images/hero.jpg` |
 | Imagen al compartir el enlace (redes y WhatsApp) | `app/opengraph-image.jpg` |
 | Favicon | `app/icon.svg` |
 | Colores y tipografías | `app/globals.css` (`@theme`) y `app/layout.tsx` |
+
+## Rastreo de envíos
+
+La página `/rastreo` (también hay un formulario en el inicio) consulta una hoja de Google Sheets que hace de base de datos:
+
+- La primera fila debe tener las columnas **`Guia`** y **`Estado`**. El orden de las columnas da igual.
+- Los estados válidos, en orden, son: `Saliendo`, `Embarque`, `Llegada`, `Aduana` y `En Bodega Destino`. No importan mayúsculas, tildes ni espacios de más. Un estado distinto se muestra como texto, sin la línea de pasos.
+- La hoja debe estar compartida como **"Cualquier persona con el enlace puede ver"**. Los visitantes del sitio no ven el enlace (solo lo usa el servidor), pero quien lo tenga sí puede ver la hoja completa.
+- Los cambios en la hoja se reflejan en el sitio en 1 a 2 minutos, porque la lectura se guarda en cache.
 
 **Antes de publicar** reemplaza los marcadores de `lib/site.ts`:
 
@@ -46,7 +63,7 @@ pnpm lint         # revisión con ESLint
 ```
 app/          layout (metadata, SEO, fuentes), página, favicon, OG, robots y sitemap
 components/   secciones de la página (Hero, Services, Coverage, …) y el logo en SVG
-lib/          datos de contacto (site.ts) y contenido (content.ts)
+lib/          datos de contacto (site.ts), contenido (content.ts) y rastreo (tracking.ts, tracking-steps.ts)
 public/       imagen del hero
 ```
 
@@ -63,7 +80,8 @@ public/       imagen del hero
    ```
 2. En Vercel ve a **Add New → Project**, importa el repositorio y deja el framework en Next.js. Vercel detecta pnpm por el `pnpm-lock.yaml`.
 3. (Recomendado) En **Settings → Environment Variables** agrega `ENABLE_EXPERIMENTAL_COREPACK=1`. Así Vercel usa la misma versión de pnpm declarada en `packageManager` (11.3.0).
-4. Pulsa **Deploy**. Cada `git push` a `main` vuelve a publicar el sitio automáticamente.
+4. En **Settings → Environment Variables** agrega `TRACKING_SHEET_ID` (y `TRACKING_SHEET_GID` si la pestaña no es la primera). Sin esta variable, la página de rastreo muestra un aviso de servicio no disponible.
+5. Pulsa **Deploy**. Cada `git push` a `main` vuelve a publicar el sitio automáticamente.
 
 ### Dominio www.seglobal360.com
 

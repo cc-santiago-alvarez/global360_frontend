@@ -35,6 +35,40 @@
       transform: none;
     }
   }
+
+  /* Línea de rastreo: cada paso aparece y el tramo hacia el siguiente se llena (horizontal o vertical). */
+  --animate-step-in: step-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-fill-x: fill-x 0.4s ease-out both;
+  --animate-fill-y: fill-y 0.4s ease-out both;
+
+  @keyframes step-in {
+    from {
+      opacity: 0;
+      transform: scale(0.6);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes fill-x {
+    from {
+      transform: scaleX(0);
+    }
+    to {
+      transform: none;
+    }
+  }
+
+  @keyframes fill-y {
+    from {
+      transform: scaleY(0);
+    }
+    to {
+      transform: none;
+    }
+  }
 }
 
 /* Texto dorado con brillo, como el logo. Variante "deep" para fondos claros (contraste). */
@@ -72,6 +106,7 @@
     *::before,
     *::after {
       animation-duration: 0.01ms !important;
+      animation-delay: 0ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
     }

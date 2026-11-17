@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { Factory, Ship, Truck } from "lucide-react";
+import { TrackingForm } from "@/components/tracking/TrackingForm";
 import { WhatsAppLink } from "@/components/WhatsAppLink";
 
 const highlights = [
@@ -58,6 +59,8 @@ export function Hero() {
               Ver servicios
             </a>
           </div>
+
+          <TrackingForm label="¿Ya tienes guía? Rastrea tu envío" id="guia-inicio" className="mt-10 max-w-md" />
 
           <ul className="mt-14 grid gap-4 border-t border-white/10 pt-8 sm:grid-cols-3">
             {highlights.map(({ icon: Icon, label }) => (

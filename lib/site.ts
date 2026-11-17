@@ -20,10 +20,12 @@ export function whatsappUrl(message: string = site.whatsappMessage) {
   return `https://wa.me/${site.whatsapp}?text=${encodeURIComponent(message)}`;
 }
 
+// Las secciones del inicio van como "/#id" para que también funcionen desde otras páginas (ej. /rastreo).
 export const navLinks = [
-  { href: "#inicio", label: "Inicio" },
-  { href: "#servicios", label: "Servicios" },
-  { href: "#logistica", label: "Logística" },
-  { href: "#cobertura", label: "Cobertura" },
-  { href: "#contacto", label: "Contacto" },
+  { href: "/#inicio", label: "Inicio" },
+  { href: "/#servicios", label: "Servicios" },
+  { href: "/#logistica", label: "Logística" },
+  { href: "/#cobertura", label: "Cobertura" },
+  { href: "/rastreo", label: "Rastrear" },
+  { href: "/#contacto", label: "Contacto" },
 ] as const;

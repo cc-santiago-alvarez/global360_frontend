@@ -1,32 +1,43 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { WhatsAppLink } from "@/components/WhatsAppLink";
 import { navLinks } from "@/lib/site";
 
-export function Header() {
-  const [open, setOpen] = useState(false);
-  const [active, setActive] = useState<string>(navLinks[0].href);
+// Links a secciones del inicio ("/#id"); el resto son páginas propias (ej. "/rastreo").
+const sectionLinks = navLinks.filter(({ href }) => href.startsWith("/#"));
 
-  // Resalta en el menú la sección visible.
+export function Header() {
+  const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+  const [section, setSection] = useState<string>(sectionLinks[0].href);
+
+  // En el inicio resalta la sección visible; en otras páginas, el link de esa página.
+  const isActive = (href: string) => (href.startsWith("/#") ? pathname === "/" && section === href : pathname === href);
+  const currentFor = (href: string) => (isActive(href) ? (href.startsWith("/#") ? "true" : "page") : undefined);
+
   useEffect(() => {
-    const sections = navLinks
-      .map(({ href }) => document.querySelector<HTMLElement>(href))
+    if (pathname !== "/") return;
+
+    const sections = sectionLinks
+      .map(({ href }) => document.querySelector<HTMLElement>(href.slice(1)))
       .filter((el): el is HTMLElement => el !== null);
 
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
-          if (entry.isIntersecting) setActive(`#${entry.target.id}`);
+          if (entry.isIntersecting) setSection(`/#${entry.target.id}`);
         }
       },
       { rootMargin: "-45% 0px -50% 0px" },
     );
     sections.forEach((section) => observer.observe(section));
     return () => observer.disconnect();
-  }, []);
+  }, [pathname]);
 
   useEffect(() => {
     if (!open) return;
@@ -39,25 +50,26 @@ export function Header() {
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-navy-950/95 backdrop-blur-md">
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between gap-6 px-4 sm:px-6 lg:px-8">
-        <a href="#inicio" aria-label="SEGlobal 360, ir al inicio" className="shrink-0">
+        <Link href="/#inicio" aria-label="SEGlobal 360, ir al inicio" className="shrink-0">
           <Logo knockout="#061024" />
-        </a>
+        </Link>
 
-        <nav aria-label="Principal" className="hidden md:block">
+        {/* Con 6 links el menú completo no cabe en tablet; ahí se usa el menú desplegable. */}
+        <nav aria-label="Principal" className="hidden lg:block">
           <ul className="flex items-center gap-8">
             {navLinks.map(({ href, label }) => (
               <li key={href}>
-                <a
+                <Link
                   href={href}
-                  aria-current={active === href ? "true" : undefined}
+                  aria-current={currentFor(href)}
                   className="group relative py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white/75 transition-colors hover:text-white aria-[current]:text-white"
                 >
                   {label}
                   <span
-                    className={`absolute inset-x-0 -bottom-0.5 h-0.5 origin-left rounded-full bg-gold-400 transition-transform duration-300 group-hover:scale-x-100 ${active === href ? "scale-x-100" : "scale-x-0"}`}
+                    className={`absolute inset-x-0 -bottom-0.5 h-0.5 origin-left rounded-full bg-gold-400 transition-transform duration-300 group-hover:scale-x-100 ${isActive(href) ? "scale-x-100" : "scale-x-0"}`}
                     aria-hidden="true"
                   />
-                </a>
+                </Link>
               </li>
             ))}
           </ul>
@@ -69,24 +81,25 @@ export function Header() {
           aria-expanded={open}
           aria-controls="menu-movil"
           aria-label={open ? "Cerrar menú" : "Abrir menú"}
-          className="grid size-11 place-items-center rounded-full text-white transition hover:bg-white/10 md:hidden"
+          className="grid size-11 place-items-center rounded-full text-white transition hover:bg-white/10 lg:hidden"
         >
           {open ? <X className="size-6" /> : <Menu className="size-6" />}
         </button>
       </div>
 
       {open && (
-        <nav id="menu-movil" aria-label="Principal" className="border-t border-white/10 px-4 pt-2 pb-6 md:hidden">
+        <nav id="menu-movil" aria-label="Principal" className="border-t border-white/10 px-4 pt-2 pb-6 lg:hidden">
           <ul className="flex flex-col">
             {navLinks.map(({ href, label }) => (
               <li key={href}>
-                <a
+                <Link
                   href={href}
                   onClick={() => setOpen(false)}
-                  className={`block border-b border-white/5 py-4 text-sm font-semibold uppercase tracking-[0.2em] ${active === href ? "text-gold-300" : "text-white/80"}`}
+                  aria-current={currentFor(href)}
+                  className={`block border-b border-white/5 py-4 text-sm font-semibold uppercase tracking-[0.2em] ${isActive(href) ? "text-gold-300" : "text-white/80"}`}
                 >
                   {label}
-                </a>
+                </Link>
               </li>
             ))}
           </ul>

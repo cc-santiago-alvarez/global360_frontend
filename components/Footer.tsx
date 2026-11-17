@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { CurrentYear } from "@/components/CurrentYear";
 import { InstagramIcon, LinkedinIcon, WhatsAppIcon } from "@/components/icons/Brand";
 import { Logo } from "@/components/Logo";
@@ -13,20 +14,20 @@ export function Footer() {
   return (
     <footer className="border-t border-gold-500/20 bg-navy-950 text-white">
       <div className="mx-auto flex max-w-7xl flex-col gap-10 px-4 py-14 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
-        <a href="#inicio" aria-label="SEGlobal 360, ir al inicio" className="self-start lg:self-auto">
+        <Link href="/#inicio" aria-label="SEGlobal 360, ir al inicio" className="self-start lg:self-auto">
           <Logo knockout="#061024" />
-        </a>
+        </Link>
 
         <nav aria-label="Pie de página">
           <ul className="flex flex-wrap gap-x-8 gap-y-3">
             {navLinks.map(({ href, label }) => (
               <li key={href}>
-                <a
+                <Link
                   href={href}
                   className="text-xs font-semibold tracking-[0.2em] text-white/70 uppercase transition hover:text-gold-300"
                 >
                   {label}
-                </a>
+                </Link>
               </li>
             ))}
           </ul>
