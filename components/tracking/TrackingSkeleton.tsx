@@ -16,11 +16,12 @@ export function TrackingSkeleton() {
           <div className="h-8 w-36 rounded-full bg-navy-900/10" />
         </div>
       </div>
-      <div className="mt-10 grid gap-8 md:grid-cols-5">
-        {Array.from({ length: 5 }, (_, index) => (
-          <div key={index} className="flex items-center gap-5 md:flex-col md:gap-4">
-            <div className="size-12 shrink-0 rounded-full bg-navy-900/10" />
-            <div className="h-3 w-24 rounded-full bg-navy-900/10" />
+      <div className="mt-8 h-24 rounded-2xl bg-navy-900/5" />
+      <div className="mt-10 grid gap-6 lg:grid-cols-9">
+        {Array.from({ length: 9 }, (_, index) => (
+          <div key={index} className="flex items-center gap-4 lg:flex-col lg:gap-3">
+            <div className="size-11 shrink-0 rounded-full bg-navy-900/10" />
+            <div className="h-3 w-24 rounded-full bg-navy-900/10 lg:w-14" />
           </div>
         ))}
       </div>

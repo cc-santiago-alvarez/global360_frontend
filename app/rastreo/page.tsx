@@ -13,7 +13,7 @@ import { site } from "@/lib/site";
 export const metadata: Metadata = {
   title: `Rastrear envío | ${site.name}`,
   description:
-    "Consulta con tu número de guía en qué etapa va tu envío: salida, embarque, llegada, aduana y bodega de destino.",
+    "Consulta con tu número de guía en qué etapa va tu envío: desde la recepción en bodega de origen, la exportación y el tránsito internacional hasta la aduana y la entrega.",
   alternates: { canonical: "/rastreo" },
 };
 

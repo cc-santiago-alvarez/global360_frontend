@@ -3,13 +3,22 @@ import "server-only";
 import { cacheLife } from "next/cache";
 import { normalizeText, stepIndexFor } from "@/lib/tracking-steps";
 
-// La "base de datos" es una hoja de Google Sheets con las columnas "Guia" y "Estado".
+// La "base de datos" es una hoja de Google Sheets con las columnas "Tracking Number", "Status" y "Descripción".
 // Se lee como CSV desde el servidor; la hoja debe estar compartida como "cualquiera con el enlace puede ver".
 
 export type ShipmentLookup =
   | { status: "invalid" }
   | { status: "not-found"; guia: string }
-  | { status: "found"; guia: string; estado: string; stepIndex: number };
+  | { status: "found"; guia: string; estado: string; descripcion: string; stepIndex: number };
+
+type Shipment = { estado: string; descripcion: string };
+
+// Nombres aceptados para cada columna, ya normalizados (minúsculas, sin tildes). El orden de las columnas da igual.
+const COLUMN_NAMES = {
+  guia: ["tracking number", "tracking", "numero de guia", "guia"],
+  estado: ["status", "estado"],
+  descripcion: ["descripcion", "description", "nota", "notas", "observaciones"],
+};
 
 const GUIA_PATTERN = /^[A-Z0-9-]{1,30}$/;
 
@@ -26,42 +35,76 @@ export async function findShipment(rawGuia: string): Promise<ShipmentLookup> {
   const table = await getTrackingTable();
   if (!Object.hasOwn(table, guia)) return { status: "not-found", guia };
 
-  const estado = table[guia].trim();
-  return { status: "found", guia, estado, stepIndex: stepIndexFor(estado) };
+  const estado = table[guia].estado.trim();
+  const descripcion = table[guia].descripcion.trim();
+  return { status: "found", guia, estado, descripcion, stepIndex: stepIndexFor(estado) };
 }
 
-/** Tabla { guía: estado } leída de la hoja. Se cachea y se vuelve a leer como máximo cada minuto. */
-async function getTrackingTable(): Promise<Record<string, string>> {
+/**
+ * Errores de la hoja de rastreo. Se registran aquí mismo porque en producción Next.js oculta el mensaje
+ * de los errores que salen de una función "use cache" (en el log solo quedaría un "digest").
+ * Se lanzan en vez de devolverse para que un fallo temporal no quede guardado en el cache.
+ */
+function fail(message: string, cause?: unknown): never {
+  console.error(`[rastreo] ${message}`, cause ?? "");
+  throw new Error(message, { cause });
+}
+
+/** URL de exportación CSV. TRACKING_SHEET_ID acepta el ID de la hoja o la URL completa copiada del navegador. */
+function sheetCsvUrl() {
+  const raw = process.env.TRACKING_SHEET_ID?.trim().replace(/^["']|["']$/g, "");
+  if (!raw) return null;
+
+  const id = raw.match(/\/spreadsheets\/d\/([\w-]+)/)?.[1] ?? raw;
+  const gid = process.env.TRACKING_SHEET_GID?.trim() || raw.match(/[#&?]gid=(\d+)/)?.[1] || "0";
+  return `https://docs.google.com/spreadsheets/d/${encodeURIComponent(id)}/export?format=csv&gid=${encodeURIComponent(gid)}`;
+}
+
+/** Tabla { guía: { estado, descripción } } leída de la hoja. Se cachea y se vuelve a leer como máximo cada minuto. */
+async function getTrackingTable(): Promise<Record<string, Shipment>> {
   "use cache";
   cacheLife("minutes");
 
-  const sheetId = process.env.TRACKING_SHEET_ID;
-  if (!sheetId) throw new Error("Falta la variable de entorno TRACKING_SHEET_ID.");
-  const gid = process.env.TRACKING_SHEET_GID || "0";
+  const url = sheetCsvUrl();
+  if (!url) fail("Falta la variable de entorno TRACKING_SHEET_ID (configúrala en Vercel y vuelve a desplegar).");
 
-  // Los errores se lanzan (no se devuelven) para que un fallo temporal no quede guardado en el cache.
-  const url = `https://docs.google.com/spreadsheets/d/${encodeURIComponent(sheetId)}/export?format=csv&gid=${encodeURIComponent(gid)}`;
-  const response = await fetch(url, { signal: AbortSignal.timeout(10_000) });
-  if (!response.ok) throw new Error(`Google Sheets respondió ${response.status} al leer la hoja de rastreo.`);
+  let response: Response;
+  try {
+    response = await fetch(url, { signal: AbortSignal.timeout(10_000) });
+  } catch (error) {
+    fail(`No se pudo conectar con Google Sheets (${url}).`, error);
+  }
+  if (!response.ok) fail(`Google Sheets respondió ${response.status} al leer ${url}.`);
 
   // Si la hoja deja de ser pública, Google responde con su página de inicio de sesión en vez de un CSV.
-  if (!response.headers.get("content-type")?.includes("text/csv")) {
-    throw new Error("La hoja de rastreo no devolvió un CSV. Revisa que esté compartida como 'cualquiera con el enlace'.");
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.includes("text/csv")) {
+    fail(`La hoja no devolvió un CSV (content-type: ${contentType}). Revisa que esté compartida como "cualquiera con el enlace".`);
   }
 
   const [header = [], ...rows] = parseCsv(await response.text());
   const columns = header.map(normalizeText);
-  const guiaColumn = columns.indexOf("guia");
-  const estadoColumn = columns.indexOf("estado");
+  const columnOf = (names: string[]) => columns.findIndex((column) => names.includes(column));
+  const guiaColumn = columnOf(COLUMN_NAMES.guia);
+  const estadoColumn = columnOf(COLUMN_NAMES.estado);
+  const descripcionColumn = columnOf(COLUMN_NAMES.descripcion); // opcional
   if (guiaColumn === -1 || estadoColumn === -1) {
-    throw new Error('La hoja de rastreo debe tener las columnas "Guia" y "Estado" en la primera fila.');
+    fail(
+      `La hoja debe tener las columnas "Tracking Number" y "Status" en la primera fila (encontradas: ${header.join(", ")}).`,
+    );
   }
 
-  const table: Record<string, string> = {};
+  const table: Record<string, Shipment> = {};
   for (const row of rows) {
+    // Las filas sin número de guía (por ejemplo, filas de referencia) se ignoran.
     const guia = normalizeGuia(row[guiaColumn] ?? "");
     // Si una guía aparece repetida, gana la fila de más abajo (la más reciente).
-    if (guia) table[guia] = row[estadoColumn] ?? "";
+    if (guia) {
+      table[guia] = {
+        estado: row[estadoColumn] ?? "",
+        descripcion: descripcionColumn === -1 ? "" : (row[descripcionColumn] ?? ""),
+      };
+    }
   }
   return table;
 }

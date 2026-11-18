@@ -38,7 +38,7 @@ pnpm lint         # revisión con ESLint
 | WhatsApp, mensaje prellenado, Instagram y LinkedIn | `lib/site.ts` |
 | Servicios, soluciones logísticas, países y categorías | `lib/content.ts` |
 | Menú de navegación | `navLinks` en `lib/site.ts` |
-| Pasos del rastreo (nombres, textos e íconos) | `lib/tracking-steps.ts` |
+| Pasos del rastreo (nombres e íconos) | `lib/tracking-steps.ts` |
 | Imagen principal (hero) | `public/images/hero.jpg` |
 | Imagen al compartir el enlace (redes y WhatsApp) | `app/opengraph-image.jpg` |
 | Favicon | `app/icon.svg` |
@@ -48,8 +48,21 @@ pnpm lint         # revisión con ESLint
 
 La página `/rastreo` (también hay un formulario en el inicio) consulta una hoja de Google Sheets que hace de base de datos:
 
-- La primera fila debe tener las columnas **`Guia`** y **`Estado`**. El orden de las columnas da igual.
-- Los estados válidos, en orden, son: `Saliendo`, `Embarque`, `Llegada`, `Aduana` y `En Bodega Destino`. No importan mayúsculas, tildes ni espacios de más. Un estado distinto se muestra como texto, sin la línea de pasos.
+- La primera fila debe tener las columnas **`Tracking Number`**, **`Status`** y **`Descripción`**. El orden de las columnas da igual. La descripción es opcional: si tiene texto, se muestra en un recuadro debajo del estado.
+- Los estados válidos, en orden, son:
+  1. Recibido en bodega de origen
+  2. En alistamiento
+  3. Proceso de exportación
+  4. En tránsito internacional
+  5. Arribado al país de destino
+  6. En gestión aduanera
+  7. Liberado por aduanas
+  8. Listo para entrega
+  9. Entregado
+
+  No importan mayúsculas, tildes ni espacios de más. Un estado distinto (por ejemplo, mal escrito) se muestra como texto, sin la línea de pasos. Para agregar o renombrar un estado hay que cambiarlo también en `lib/tracking-steps.ts`.
+- Recomendado: en Google Sheets, ve a **Datos → Validación de datos** y crea en la columna `Status` un menú desplegable con esos 9 estados, para que no se escriban a mano.
+- Las filas sin `Tracking Number` se ignoran.
 - La hoja debe estar compartida como **"Cualquier persona con el enlace puede ver"**. Los visitantes del sitio no ven el enlace (solo lo usa el servidor), pero quien lo tenga sí puede ver la hoja completa.
 - Los cambios en la hoja se reflejan en el sitio en 1 a 2 minutos, porque la lectura se guarda en cache.
 

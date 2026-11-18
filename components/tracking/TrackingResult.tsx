@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { CloudOff, PackageSearch, SearchX, type LucideIcon } from "lucide-react";
+import { CloudOff, Info, PackageSearch, SearchX, type LucideIcon } from "lucide-react";
 import { TrackingSteps } from "@/components/tracking/TrackingSteps";
 import { WhatsAppLink } from "@/components/WhatsAppLink";
 import { findShipment, type ShipmentLookup } from "@/lib/tracking";
@@ -13,7 +13,8 @@ export async function TrackingResult({ guia }: { guia: string }) {
   try {
     result = await findShipment(guia);
   } catch (error) {
-    console.error("[rastreo] No se pudo leer la hoja de rastreo:", error);
+    // Los fallos de la hoja ya dejan su motivo en el log desde lib/tracking.ts; esto cubre cualquier otro error.
+    console.error("[rastreo] Error al consultar la guía:", error);
     return (
       <Notice icon={CloudOff} title="No pudimos consultar tu envío" message={guiaMessage(guia)}>
         El sistema de rastreo no está disponible en este momento. Intenta de nuevo en unos minutos o escríbenos y
@@ -40,10 +41,15 @@ export async function TrackingResult({ guia }: { guia: string }) {
 
   const step = trackingSteps[result.stepIndex];
 
-  // La guía existe pero su estado no es uno de los pasos conocidos (o está vacío).
+  // La guía existe pero su estado no es uno de los pasos conocidos (por ejemplo, mal escrito) o está vacío.
   if (!step) {
     return (
-      <Notice icon={PackageSearch} title={`Guía ${result.guia}`} message={guiaMessage(result.guia)}>
+      <Notice
+        icon={PackageSearch}
+        title={`Guía ${result.guia}`}
+        message={guiaMessage(result.guia)}
+        detail={result.descripcion}
+      >
         {result.estado ? (
           <>
             Estado actual: <strong className="font-semibold text-navy-900">{result.estado}</strong>. Escríbenos si
@@ -74,13 +80,13 @@ export async function TrackingResult({ guia }: { guia: string }) {
         <div className="sm:text-right">
           <p className="text-xs font-semibold tracking-[0.3em] text-slate-500 uppercase">Estado actual</p>
           <p className="mt-2 inline-flex items-center gap-2 rounded-full bg-gold-500/15 px-4 py-1.5 text-sm font-semibold text-gold-700 ring-1 ring-gold-500/30">
-            <span className="size-2 rounded-full bg-gold-500" aria-hidden="true" />
+            <span className="size-2 shrink-0 rounded-full bg-gold-500" aria-hidden="true" />
             {step.label}
           </p>
         </div>
       </header>
 
-      <p className="mt-6 text-base text-slate-600">{step.description}</p>
+      {result.descripcion && <ShipmentDetail text={result.descripcion} className="mt-8" />}
 
       <div className="mt-10">
         <TrackingSteps current={result.stepIndex} />
@@ -94,15 +100,33 @@ export async function TrackingResult({ guia }: { guia: string }) {
   );
 }
 
+/** Recuadro con la nota de la columna "Descripción" de la hoja; respeta los saltos de línea. */
+function ShipmentDetail({ text, className = "" }: { text: string; className?: string }) {
+  return (
+    <section
+      aria-label="Detalle de tu envío"
+      className={`flex gap-4 rounded-2xl border border-gold-500/20 border-l-4 border-l-gold-500 bg-ivory p-5 text-left sm:p-6 ${className}`}
+    >
+      <Info className="mt-0.5 size-5 shrink-0 text-gold-700" strokeWidth={1.75} aria-hidden="true" />
+      <div>
+        <p className="text-xs font-semibold tracking-[0.2em] text-gold-700 uppercase">Detalle de tu envío</p>
+        <p className="mt-2 text-base leading-relaxed whitespace-pre-line text-navy-900">{text}</p>
+      </div>
+    </section>
+  );
+}
+
 type NoticeProps = {
   icon: LucideIcon;
   title: string;
   children: ReactNode;
   /** Mensaje prellenado de WhatsApp; sin él no se muestra el botón. */
   message?: string;
+  /** Nota de la hoja para mostrar en el recuadro de detalle. */
+  detail?: string;
 };
 
-function Notice({ icon: Icon, title, children, message }: NoticeProps) {
+function Notice({ icon: Icon, title, children, message, detail }: NoticeProps) {
   return (
     <article className="mx-auto max-w-2xl animate-fade-up rounded-3xl border border-navy-900/5 bg-white p-8 text-center shadow-sm shadow-navy-900/5 sm:p-12">
       <span className="mx-auto grid size-14 place-items-center rounded-full bg-gold-500/10 text-gold-700 ring-1 ring-gold-500/40">
@@ -110,6 +134,7 @@ function Notice({ icon: Icon, title, children, message }: NoticeProps) {
       </span>
       <h2 className="mt-6 font-display text-2xl font-semibold break-words text-navy-900">{title}</h2>
       <p className="mx-auto mt-3 max-w-md text-base leading-relaxed text-slate-600">{children}</p>
+      {detail && <ShipmentDetail text={detail} className="mt-8" />}
       {message && <WhatsAppLink variant="solid" label="Escríbenos por WhatsApp" message={message} className="mt-8" />}
     </article>
   );
